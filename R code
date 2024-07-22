@@ -1,0 +1,110 @@
+###=================================###
+###Database preparation and settings###
+###=================================###
+
+require(lavaan)
+require(semPlot)
+require(lavaanPlot)
+require(psych)
+require(semTools)
+require(semPower)
+
+# set working directory
+setwd("C:/file/location")
+
+#Load database
+data <- read.csv("[file name]", header=TRUE)
+
+options(max.print=999999)
+#head(data)
+#describe(data)
+#names(data)
+
+
+###================###
+###Primary analysis###
+###================###
+
+model_sem <- "
+# Measurement model.
+emotional_amplification =~ Zpcs_total + Zipq_emotrepr
+perception              =~ Zipqa_identity + Zipq_conseque + Zipq_illcoher + Zipq_perscon + Zipq_treatcon
+depr_anx                =~ Zhads_a_total + Zhads_d_total
+Zipq_perscon            ~~ Zipq_treatcon
+
+# Structural model.
+emotional_amplification ~ i*depr_anx
+perception              ~ j*opleiding_dich + n*emotional_amplification
+Zcors_pain_ba           ~ f*perception
+ZmSQUASH                ~ g*Zcors_pain_ba
+Zcsi_total              ~ a*perception + h*ZmSQUASH
+ZBMI                    ~ l*ZmSQUASH + o*opleiding_dich
+ZASDAS_total            ~ c*perception + b*Zcsi_total + m*ZBMI + d*ZmSQUASH
+
+#indirect effects (remove #'s)
+#msqBmiAsd := l*m
+#msqCsiAsd := h*b
+#msqAsdTot := l*m + h*b + d                            #total effect of mSQUASH on ASDAS
+
+#percepCsiAsd := a*b
+#percepRedacAsd := f*g* (l*m + h*b + d)
+#percepAsdTot := c + (a*b) + f*g* (l*m + h*b + d)      #total effect of perception on ASDAS
+#percepAsdTotNoRedAc := a*b + c                        #total effect of perception on ADSAS, disregarding coping/physical activity/BMI
+
+#psyAsdTot := i*n*(c + (a*b) + (f*g* ((l*m + h*b + d))))       #effect of psychological wellbeing on ASDAS
+
+#eduBmiAsd := o*m
+#eduPercepAsd := j*(c + (a*b) + (f*g* (l*m + h*b + d)))
+#eduAsdTot := j*(c + (a*b) + (f*g* (l*m + h*b + d))) + o*m     #effect of educational level on ASDAS
+"
+
+# Model identification and estimation.
+semmodel <- cfa(model_sem,data=data,check.gradient = TRUE, estimator="MLR")
+summary(semmodel,fit.measures = TRUE, standardized = T,rsquare = TRUE)
+modificationIndices(semmodel, sort = TRUE, maximum.number = 25)
+parameterEstimates(semmodel,standardized = T)
+fitMeasures(semmodel, fm.args = list(rmsea.ci.level = 0.95))
+
+
+###====================###
+###Sensitivity analysis###
+###====================###
+
+#Define model first! (see above)
+
+require(rrcovHD)
+
+variables_of_interest <- data[, c("ZmSQUASH", "ZASDAS_total", "Zcsi_total")]
+outliers_mahdist <- OutlierMahdist(variables_of_interest, control = "sde")           #Detect outliers using the robust Mahalanobis distance, Stahel-Donoho estimator
+print(outliers_mahdist)
+#getDistance(outliers_mahdist)    
+#plot(outliers_mahdist)
+
+outlier_selection <- outliers_mahdist@flag                              #Extract vector from outliers_mahdist coding outliers 0/non-outliers 1
+case_numbers_no_outliers <- seq_len(nrow(data))[outlier_selection == 1] #Create a vector of all non-outlier row numbers
+#outliers <- seq_len(nrow(data))[outlier_selection == 0]                #Create a vector of outlier row numbers
+sens_data <- data[case_numbers_no_outliers,]                            #Creat subset of the dataset which excludes outliers
+
+
+### Running the SEM analysis on the reduced dataset ###
+
+semmodel <- cfa(model_sem,data=sens_data,check.gradient = TRUE, estimator="MLR")
+summary(semmodel,fit.measures = TRUE, standardized = T, rsquare = TRUE)
+modificationIndices(semmodel, sort = TRUE, maximum.number = 15)
+parameterEstimates(semmodel,standardized = T)
+
+
+
+###=========###
+###CFA ASDAS###
+###=========###
+   
+model_cfa_asdas <- "
+asdas =~ patGDA + BASD_2 + BASD_3 + BASD_6 + logCRP.3
+"
+# model identification and estimation
+cfamodel <- cfa(model_cfa_asdas,data=data,check.gradient = T, estimator="MLR")
+summary(cfamodel,fit.measures = T, standardized = T, rsquare = T)
+modificationIndices(cfamodel, sort = T, maximum.number = 25)
+parameterEstimates(cfamodel,standardized = T)
+fitMeasures(cfamodel, fm.args = list(rmsea.ci.level = 0.95))
