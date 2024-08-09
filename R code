@@ -37,7 +37,7 @@ emotional_amplification ~ i*depr_anx
 perception              ~ j*opleiding_dich + n*emotional_amplification
 Zcors_pain_ba           ~ f*perception
 ZmSQUASH                ~ g*Zcors_pain_ba
-Zcsi_total              ~ a*perception + h*ZmSQUASH
+Zcsi_total              ~ a*perception + h*ZmSQUASH + k*depr_anx
 ZBMI                    ~ l*ZmSQUASH + o*opleiding_dich
 ZASDAS_total            ~ c*perception + b*Zcsi_total + m*ZBMI + d*ZmSQUASH
 
@@ -51,7 +51,7 @@ ZASDAS_total            ~ c*perception + b*Zcsi_total + m*ZBMI + d*ZmSQUASH
 #percepAsdTot := c + (a*b) + f*g* (l*m + h*b + d)      #total effect of perception on ASDAS
 #percepAsdTotNoRedAc := a*b + c                        #total effect of perception on ADSAS, disregarding coping/physical activity/BMI
 
-#psyAsdTot := i*n*(c + (a*b) + (f*g* ((l*m + h*b + d))))       #effect of psychological wellbeing on ASDAS
+#psyAsdTot := k*b + i*n*(c + (a*b) + (f*g* ((l*m + h*b + d))))       #effect of psychological wellbeing on ASDAS
 
 #eduBmiAsd := o*m
 #eduPercepAsd := j*(c + (a*b) + (f*g* (l*m + h*b + d)))
